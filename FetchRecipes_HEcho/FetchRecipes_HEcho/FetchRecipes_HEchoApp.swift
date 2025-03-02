@@ -11,7 +11,7 @@ import SwiftUI
 struct FetchRecipes_HEchoApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RecipeListView()
         }
     }
 }
