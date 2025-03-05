@@ -6,19 +6,54 @@
 //
 
 import Foundation
+import UIKit
 
+@MainActor
 class RecipeDataViewModel: ObservableObject {
-    @Published var recipeList: [Recipe] = []
-    @Published var isLoading: Bool = false
-    @Published var state: String? = nil
-    @Published var errorMessage: String?
-    @Published var searchQuery: String = ""
-    @Published var cuisineTypes: [CuisineType] = []
-    @Published var selectedCuisine: CuisineType = .all
+    private let apiClient: ApiClientProtocol
+    private var recipeList: [Recipe] = []
     
-    var filteredRecipes: [Recipe] {
-        var filteredRecipes = recipeList
+    @Published var viewState: ViewState = .loading
+    @Published var searchQuery: String = "" {
+        didSet { updateFilteredRecipes() }
+    }
+    @Published var cuisineTypes: [CuisineType] = []
+    @Published var selectedCuisine: CuisineType = .all {
+        didSet { updateFilteredRecipes() }
+    }
+    @Published private(set) var filteredRecipes: [Recipe] = []
+    
+    init(apiClient: ApiClientProtocol = ApiClient.shared) {
+        self.apiClient = apiClient
+    }
+    
+    func refresh() async {
+        try? await fetchAllRecipes()
+    }
+    
+    /// Loads the initial unfiltered recipe data set
+    func fetchAllRecipes() async throws {
+        do {
+            self.recipeList = try await apiClient.fetchRecipeData(for: ApiConstants.recipeUrl)
+            getCuisineTypes()
+            updateFilteredRecipes()
+        } catch let error as APIClientError {
+            viewState = .error(error.description, error.informationalMessage)
+            throw error
+        }
         
+        viewState = recipeList.isEmpty ? .empty : .loaded
+    }
+    
+    /// Helper method to build cuisines from available recipes to populated dropdown menu
+    private func getCuisineTypes() {
+        let cuisines = Set(recipeList.map { CuisineType.cuisine($0.cuisine) })
+        cuisineTypes = [CuisineType.all] + cuisines.sorted { $0.description < $1.description }
+    }
+    
+    /// Updates `filteredRecipes` whenever the search query or selected cuisine changes.
+    private func updateFilteredRecipes() {
+        var filteredRecipes = recipeList
         if !searchQuery.isEmpty {
             filteredRecipes = filteredRecipes.filter {
                 $0.name.lowercased().contains(searchQuery.lowercased())
@@ -27,40 +62,15 @@ class RecipeDataViewModel: ObservableObject {
         
         switch selectedCuisine {
         case .all:
-            return filteredRecipes
-        case .cuisine(let string):
+            break
+        case .cuisine:
             filteredRecipes = filteredRecipes.filter {
                 $0.cuisine.lowercased() == selectedCuisine.description.lowercased()
             }
         }
-        return filteredRecipes
-    }
-    
-    @MainActor
-    func refresh() async {
-        try? await fetchAllRecipes()
-    }
-    
-    @MainActor
-    func fetchAllRecipes() async throws{
-        isLoading = true
-        errorMessage = nil
-        //state = nil
-        do {
-            self.recipeList = try await APIClient.shared.fetchAllRecipeData()
-            self.getCuisineTypes()
-        } catch {
-            //Error handling
-        }
         
-        isLoading = false
-    }
-    
-    private func getCuisineTypes() {
-        let cuisines = Set(recipeList.map {
-            CuisineType.cuisine($0.cuisine)
-        })
-        cuisineTypes = [CuisineType.all] + cuisines.sorted { $0.description < $1.description }
+        self.filteredRecipes = filteredRecipes
+        self.viewState = filteredRecipes.isEmpty ? .empty : .loaded
     }
     
     enum CuisineType: Hashable {

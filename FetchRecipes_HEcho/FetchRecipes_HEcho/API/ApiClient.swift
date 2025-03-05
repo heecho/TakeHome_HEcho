@@ -8,64 +8,78 @@
 import Foundation
 import UIKit
 
-actor APIClient {
-    static let shared = APIClient()
-    private let urlSession = URLSession.shared
-    
-    
-    func fetchAllRecipeData() async throws -> [Recipe]{
-        do {
-            // Fetch and decode a specific type
-            let url = URL(string: APIConstants.recipeUrl)!
-            let recipes = try await urlSession.decode(Recipes.self,
-                                                            from: url)
-            return recipes.recipes
-        } catch {
-            //TODO Add error handling
-            return []
-        }
-    }
-    
-    func fetchRecipeImage(_ recipe: Recipe, size: ImageSizeClass) async throws -> UIImage? {
-        guard let imageUrlString = imageUrlForSize(recipe, size: size) else {
-            return nil
-        }
-        
-        if let cachedImage = await RecipeImageCache.shared.getImageFromCache(for: recipe, imageSize: size) {
-            return cachedImage
-        }
-        
-        let (data, _) = try await urlSession.data(from: URL(string: imageUrlString)!)
-        
-        guard let image = UIImage(data: data) else {
-            return nil
-            //throw DownloadError.dataCannotBeConvertedToImage
-        }
-        
-        await RecipeImageCache.shared.addImageToCache(image, imageSize: size, for: recipe)
-        
-        return image
-    }
-    
-    private func imageUrlForSize(_ recipe: Recipe, size: ImageSizeClass) -> String? {
-        switch size {
-        case .small:
-            return recipe.photoUrlSmall
-        case .large:
-            return recipe.photoUrlLarge
-        }
-    }
+protocol URLSessionProtocol: Sendable {
+    func data(from url: URL) async throws -> (Data, URLResponse)
+    func decode<T: Decodable>(_ type: T.Type, from url: URL, keyDecodingStrategy: JSONDecoder.KeyDecodingStrategy) async throws -> T
 }
 
-extension URLSession {
+protocol ApiClientProtocol: Sendable {
+    func fetchRecipeData(for url: String) async throws -> [Recipe]
+    func fetchRecipeImage(_ recipe: Recipe, size: ImageSizeClass, url: URL) async throws -> UIImage?
+}
+
+actor ApiClient: ApiClientProtocol {
+    static let shared = ApiClient()
+    private let urlSession: URLSessionProtocol
+    
+    init(urlSession: URLSessionProtocol = URLSession.shared) {
+        self.urlSession = urlSession
+    }
+    
+    func fetchRecipeData(for url: String = ApiConstants.recipeUrl) async throws -> [Recipe] {
+        do {
+            // Fetch and decode the recipes
+            guard let url = URL(string: url) else {
+                throw APIClientError.invalidURL
+            }
+            
+            let recipes = try await urlSession.decode(Recipes.self,
+                                                      from: url,
+                                                      keyDecodingStrategy: .useDefaultKeys)
+            return recipes.recipes
+        } catch let error as APIClientError {
+            throw error
+        } catch {
+            throw APIClientError.dataFetchFailed
+        }
+    }
+    
+    func fetchRecipeImage(_ recipe: Recipe, size: ImageSizeClass, url: URL) async throws -> UIImage? {
+        do {
+            // Fetch image data
+            let (data, _) = try await urlSession.data(from: url)
+            
+            guard let image = UIImage(data: data) else {
+                throw APIClientError.imageConversionFailed
+            }
+            
+            // Cache the downloaded image
+            await RecipeImageCache.shared.addImageToCache(image, imageSize: size, for: recipe)
+            
+            return image
+        } catch {
+            throw APIClientError.imageDownloadFailed
+        }
+    }
+    
+    
+}
+
+
+extension URLSession: URLSessionProtocol {
     func decode<T: Decodable>(_ type: T.Type = T.self,
                               from url: URL,
-                              keyDecodingStrategy: JSONDecoder.KeyDecodingStrategy = .useDefaultKeys
+                              keyDecodingStrategy: JSONDecoder.KeyDecodingStrategy
     ) async throws -> T {
         let (data, _) = try await data(from: url)
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = keyDecodingStrategy
-        let decoded = try decoder.decode(T.self, from: data)
-        return decoded
+    
+        do {
+            let decoded = try decoder.decode(T.self, from: data)
+            return decoded
+        } catch {
+            throw APIClientError.decodingFailed
+        }
     }
 }

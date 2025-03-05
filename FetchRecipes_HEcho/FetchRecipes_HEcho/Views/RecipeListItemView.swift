@@ -7,17 +7,26 @@
 
 
 import SwiftUI
-import Combine
 
 struct RecipeListItemView: View {
     let recipe: Recipe
     let size: ImageSizeClass
     
+    @StateObject var imageLoader = ImageLoader ()
     @State private var image: UIImage?
     
     var body: some View {
         HStack {
-            RecipeImageView()
+            switch imageLoader.viewState {
+            case .loading:
+                ProgressView()
+                    .frame(width: 44, height: 44)
+            case .loaded:
+                RecipeImageView()
+            case .empty, .error:
+                EmptyImageView(size: .small)
+            }
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(recipe.name)")
                     .font(.headline)
@@ -28,7 +37,7 @@ struct RecipeListItemView: View {
         }
         .onAppear {
             Task { @MainActor in
-                self.image = try? await APIClient.shared.fetchRecipeImage(recipe, size: size)
+                self.image = try? await imageLoader.fetchRecipeImage(recipe, size: size)
             }
         }
     }
@@ -41,9 +50,7 @@ struct RecipeListItemView: View {
                 .frame(width: 60, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
         } else {
-            Image(systemName: "photo")
-                .resizable()
-                .frame(width: 60, height: 60)
+            EmptyImageView(size: .small)
         }
     }
 }

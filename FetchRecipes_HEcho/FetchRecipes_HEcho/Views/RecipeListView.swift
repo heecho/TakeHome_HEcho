@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Combine
 
 struct RecipeListView: View {
     @StateObject private var viewModel = RecipeDataViewModel()
@@ -34,10 +33,15 @@ struct RecipeListView: View {
                 }
                 .padding(.horizontal)
                 
-                if viewModel.recipeList.isEmpty {
+                switch viewModel.viewState {
+                case .loading:
                     ProgressView("Loading Recipes...")
                     Spacer()
-                } else {
+                case .empty:
+                    Text("There are no recipes to display, try a new search term or refresh the data.")
+                        .padding()
+                    Spacer()
+                case .loaded:
                     List {
                         ForEach(viewModel.filteredRecipes, id: \.self) { recipe in
                             NavigationLink(destination: RecipeDetailView(recipe: recipe, size: .large)) {
@@ -48,13 +52,25 @@ struct RecipeListView: View {
                     .refreshable {
                         await viewModel.refresh()
                     }
-                   
+                case .error(let title, let subtitle):
+                    VStack(alignment: .center) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .frame(width: 44, height: 44)
+                        Text("\(title)")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        Text("\(subtitle)")
+                            .font(.subheadline)
+                            .padding(.horizontal)
+                    }
+                    .padding()
+                    Spacer()
                 }
             }
             .task {
                 try? await viewModel.fetchAllRecipes()
             }
-            .navigationTitle("\(viewModel.selectedCuisine.description)Recipes")
+            .navigationTitle("\(viewModel.selectedCuisine.description) Recipes")
         }
     }
 }

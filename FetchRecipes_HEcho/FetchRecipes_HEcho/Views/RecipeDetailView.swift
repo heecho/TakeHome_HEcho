@@ -6,25 +6,27 @@
 //
 
 import SwiftUI
-import Combine
 
 struct RecipeDetailView: View {
     let recipe: Recipe
     let size: ImageSizeClass
     
+    @StateObject var imageLoader = ImageLoader ()
     @State private var image: UIImage?
     
+    private let imageSize: CGSize = CGSize(width: 300, height: 300)
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if let _ = image {
-                RecipeImageView()
-            } else {
+        VStack(alignment: .center, spacing: 8) {
+            switch imageLoader.viewState {
+            case .loading:
                 ProgressView()
-                    .task {
-                        self.image = try? await APIClient.shared.fetchRecipeImage(recipe, size: size)
-                    }
-                    .frame(width: 200, height: 200)
-                    .padding()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .frame(height: imageSize.height)
+            case .loaded:
+                RecipeImageView()
+            case .empty, .error:
+                EmptyImageView(size: .large)
             }
             
             VStack(alignment: .leading, content: {
@@ -35,6 +37,11 @@ struct RecipeDetailView: View {
                 Spacer()
             })
         }
+        .onAppear {
+            Task { @MainActor in
+                self.image = try? await imageLoader.fetchRecipeImage(recipe, size: size)
+            }
+        }
         .padding()
     }
     
@@ -43,14 +50,12 @@ struct RecipeDetailView: View {
         if let image = image {
             Image(uiImage: image)
                 .resizable()
-                .frame(height: 300)
+                .frame(height: imageSize.height)
                 .scaledToFit()
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(color: Color.black.opacity(0.25), radius: 12, x: 0, y: 4)
         } else {
-            Image(systemName: "photo")
-                .resizable()
-                .frame(width: 300, height: 300)
+            EmptyImageView(size: .large)
         }
     }
     
@@ -102,7 +107,7 @@ struct RecipeDetailView: View {
             UIApplication.shared.open(url)
         }
     }
-                            
+    
 }
 
 #Preview {

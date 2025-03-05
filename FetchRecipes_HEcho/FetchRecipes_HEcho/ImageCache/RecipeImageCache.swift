@@ -8,17 +8,19 @@
 import Foundation
 import UIKit
 
-actor RecipeImageCache {
-    // MARK: - Constants
+protocol RecipeImageCacheProtocol: Sendable {
+    func addImageToCache(_ image: UIImage, imageSize: ImageSizeClass, for recipe: Recipe) async
+    func getImageFromCache(for recipe: Recipe, imageSize: ImageSizeClass) async -> UIImage?
+}
+actor RecipeImageCache: RecipeImageCacheProtocol {
     static let shared = RecipeImageCache()
     private let cache = NSCache<NSString, UIImage>()
     
     init() {
-        // 250 Mb cache size of Google Drive app
+        // Reference: 250 Mb cache size of Google Drive app
         cache.totalCostLimit = 250
     }
     
-    // MARK: - Methods
     /// Adds a UIImage to the cache for an associated Recipe
     func addImageToCache(_ image: UIImage, imageSize: ImageSizeClass, for recipe: Recipe) async {
         if await getImageFromCache(for: recipe, imageSize: imageSize) != nil {
@@ -47,7 +49,8 @@ actor RecipeImageCache {
         return nil
     }
     
-    func setPathKeyFor(recipe: Recipe, imageSize: ImageSizeClass) -> String? {
+    /// Helper method to generate unique cache key for recipe + image size
+    private func setPathKeyFor(recipe: Recipe, imageSize: ImageSizeClass) -> String? {
         switch imageSize {
         case .small:
             return recipe.photoUrlSmall

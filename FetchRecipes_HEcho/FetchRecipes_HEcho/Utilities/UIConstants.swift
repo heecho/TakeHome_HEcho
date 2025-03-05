@@ -9,3 +9,10 @@ enum ImageSizeClass {
     case small
     case large
 }
+
+enum ViewState: Equatable {
+    case loading
+    case loaded
+    case empty
+    case error(String, String)
+}
