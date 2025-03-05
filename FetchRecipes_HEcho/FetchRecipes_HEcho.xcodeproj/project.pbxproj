@@ -29,6 +29,17 @@
 		6C1C19D32D7514CF0062F4CC /* FetchRecipes_HEchoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FetchRecipes_HEchoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6C1C1B402D78156B0062F4CC /* Exceptions for "FetchRecipes_HEchoUITests" folder in "FetchRecipes_HEchoUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				FetchRecipes_HEchoUITests.swift,
+				FetchRecipes_HEchoUITestsLaunchTests.swift,
+			);
+			target = 6C1C19D22D7514CF0062F4CC /* FetchRecipes_HEchoUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6C1C19BA2D7514CD0062F4CC /* FetchRecipes_HEcho */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -38,6 +49,14 @@
 		6C1C19CC2D7514CF0062F4CC /* FetchRecipes_HEchoTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = FetchRecipes_HEchoTests;
+			sourceTree = "<group>";
+		};
+		6C1C1B3A2D7813B00062F4CC /* FetchRecipes_HEchoUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				6C1C1B402D78156B0062F4CC /* Exceptions for "FetchRecipes_HEchoUITests" folder in "FetchRecipes_HEchoUITests" target */,
+			);
+			path = FetchRecipes_HEchoUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -70,6 +89,7 @@
 		6C1C19AF2D7514CD0062F4CC = {
 			isa = PBXGroup;
 			children = (
+				6C1C1B3A2D7813B00062F4CC /* FetchRecipes_HEchoUITests */,
 				6C1C19BA2D7514CD0062F4CC /* FetchRecipes_HEcho */,
 				6C1C19CC2D7514CF0062F4CC /* FetchRecipes_HEchoTests */,
 				6C1C19B92D7514CD0062F4CC /* Products */,
